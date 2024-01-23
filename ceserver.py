@@ -17,7 +17,7 @@ import websockets
 Lock = threading.Lock()
 SendMessageQueue = Queue()
 RecvMessageQueue = Queue()
-
+HeapSize = 0
 
 CEVERSION = None
 PORT = 52736
@@ -92,10 +92,12 @@ def ProtectionStringToProtection(protectionstring):
             return PAGE_READONLY
 
 def module32first():
-    SendMessageQueue.put({"command": "get_heap_size"})
-    heap_size = RecvMessageQueue.get()
+    global HeapSize
+    if HeapSize == 0:
+        SendMessageQueue.put({"command": "get_heap_size"})
+        HeapSize = RecvMessageQueue.get()
     base = 0
-    size = heap_size
+    size = HeapSize
     name = "HEAP"
     return [base, size, name]
 
@@ -292,6 +294,8 @@ script_dict = {}
 
 
 def handler(ns, command, thread_count):
+    global HeapSize
+    
     reader = BinaryReader(ns)
     writer = BinaryWriter(ns)
 
@@ -496,16 +500,14 @@ def handler(ns, command, thread_count):
     elif command == CECMD.CMD_VIRTUALQUERYEXFULL:
         handle = reader.ReadInt32()
         flags = reader.ReadInt8()
-        address = 0
-        regionSize = 0
-        SendMessageQueue.put({"command": "get_heap_size"})
-        heap_size = RecvMessageQueue.get()
+        if HeapSize == 0:
+            SendMessageQueue.put({"command": "get_heap_size"})
+            HeapSize = RecvMessageQueue.get()
         regionSize = 1
-
         protection = ProtectionStringToProtection("rw")
         baseaddress = 0
         _type = MEM_PRIVATE
-        size = heap_size
+        size = HeapSize
         bytecode = pack("<QQII", baseaddress, size, protection, _type)
         writer.WriteInt32(regionSize)
         ns.sendall(bytecode)
@@ -513,25 +515,36 @@ def handler(ns, command, thread_count):
     elif command == CECMD.CMD_VIRTUALQUERYEX:
         handle = reader.ReadInt32()
         baseaddress = reader.ReadUInt64()
-        SendMessageQueue.put({"command": "get_heap_size"})
-        heap_size = RecvMessageQueue.get()
-
-        protection = ProtectionStringToProtection("rw")
-        baseaddress = 0
-        _type = MEM_PRIVATE
-        size = heap_size
+        if HeapSize == 0:
+            SendMessageQueue.put({"command": "get_heap_size"})
+            HeapSize = RecvMessageQueue.get()
+        if baseaddress >= HeapSize:
+            _type = ProtectionStringToProtection("")
+            protection = PAGE_NOACCESS
+            size = 0
+        else:
+            baseaddress = 0
+            _type = MEM_PRIVATE
+            protection = ProtectionStringToProtection("rw")
+            size = HeapSize
         bytecode = pack("<bIIQQ", 1, protection, _type, baseaddress, size)
         ns.sendall(bytecode)
 
     elif command == CECMD.CMD_GETREGIONINFO:
         handle = reader.ReadInt32()
         baseaddress = reader.ReadUInt64()
-        SendMessageQueue.put({"command": "get_heap_size"})
-        heap_size = RecvMessageQueue.get()
-        protection = ProtectionStringToProtection("rw")
-        baseaddress = 0
-        _type = MEM_PRIVATE
-        size = heap_size
+        if HeapSize == 0:
+            SendMessageQueue.put({"command": "get_heap_size"})
+            HeapSize = RecvMessageQueue.get()
+        if baseaddress >= HeapSize:
+            _type = ProtectionStringToProtection("")
+            protection = PAGE_NOACCESS
+            size = 0
+        else:
+            baseaddress = 0
+            _type = MEM_PRIVATE
+            protection = ProtectionStringToProtection("rw")
+            size = HeapSize
         bytecode = pack("<bIIQQ", 1, protection, _type, baseaddress, size)
         ns.sendall(bytecode)
         filename = "HEAP"

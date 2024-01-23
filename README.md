@@ -14,4 +14,8 @@ python ceserver.py
 
 Then, connect to the Cheat Engine in network mode.
 
+# Progress
+- Memory read/write and search
+- Pointer Scan
+
 Have fun!
