@@ -12,10 +12,9 @@ Run ceserver.py, and then copy and paste server.js into the browser's developer 
 python ceserver.py
 ```
 
-Then, connect to the Cheat Engine in network mode.
+Then, connect to the Cheat Engine in network mode.  
+Have fun!  
 
 # Progress
 - Memory read/write and search
 - Pointer Scan
-
-Have fun!
